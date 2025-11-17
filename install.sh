@@ -27,9 +27,9 @@ chmod +x $INSTALL_DIR/media_sorter.py
 
 # Create media directories (customize these paths)
 echo "Creating media directories..."
-mkdir -p /srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/incoming
-mkdir -p /srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/TV
-mkdir -p /srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Movies
+mkdir -p /srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Server/incoming
+mkdir -p /srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Server/TV
+mkdir -p /srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Server/Movies
 
 # Install systemd service
 echo "Installing systemd service..."

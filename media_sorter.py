@@ -13,9 +13,9 @@ import requests
 from typing import Optional, Dict, Tuple
 
 # Configuration
-WATCH_FOLDER = os.getenv('MEDIA_WATCH_FOLDER', '/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/incoming')
-TV_FOLDER = os.getenv('MEDIA_TV_FOLDER', '/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/TV')
-MOVIES_FOLDER = os.getenv('MEDIA_MOVIES_FOLDER', '/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Movies')
+WATCH_FOLDER = os.getenv('MEDIA_WATCH_FOLDER', '/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Server/incoming')
+TV_FOLDER = os.getenv('MEDIA_TV_FOLDER', '/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Server/TV')
+MOVIES_FOLDER = os.getenv('MEDIA_MOVIES_FOLDER', '/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Server/Movies')
 TMDB_API_KEY = os.getenv('TMDB_API_KEY', '')  # Get free key from themoviedb.org
 POLL_INTERVAL = int(os.getenv('POLL_INTERVAL', '60'))  # seconds
 
