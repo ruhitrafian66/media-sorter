@@ -1,0 +1,19 @@
+[Unit]
+Description=Media Sorter Service
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/opt/media-sorter
+Environment="MEDIA_WATCH_FOLDER=/media/incoming"
+Environment="MEDIA_TV_FOLDER=/media/TV"
+Environment="MEDIA_MOVIES_FOLDER=/media/Movies"
+Environment="TMDB_API_KEY="
+Environment="POLL_INTERVAL=60"
+ExecStart=/usr/bin/python3 /opt/media-sorter/media_sorter.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
