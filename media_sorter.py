@@ -36,6 +36,14 @@ class MediaParser:
         r'[Ss]eason[\s\._-]*(\d{1,2})[\s\._-]*[Ee]pisode[\s\._-]*(\d{1,2})',  # Season 1 Episode 1
     ]
     
+    # Resolution patterns
+    RESOLUTION_PATTERNS = [
+        (r'2160p|4K|UHD', '2160p'),
+        (r'1080p|FHD', '1080p'),
+        (r'720p|HD', '720p'),
+        (r'480p|SD', '480p'),
+    ]
+    
     def __init__(self, tmdb_api_key: str = ''):
         self.tmdb_api_key = tmdb_api_key
         self.session = requests.Session()
@@ -125,6 +133,13 @@ class MediaParser:
                 return title
         
         return cleaned
+    
+    def detect_resolution(self, filename: str) -> Optional[str]:
+        """Detect video resolution from filename"""
+        for pattern, resolution in self.RESOLUTION_PATTERNS:
+            if re.search(pattern, filename, re.IGNORECASE):
+                return resolution
+        return None
 
 
 class MediaSorter:
@@ -180,7 +195,44 @@ class MediaSorter:
         
         return None
     
-    def copy_subtitles(self, source_folder: Path, dest_folder: Path, video_name_base: str):
+    def get_unique_filename(self, dest_folder: Path, base_name: str, extension: str, resolution: Optional[str] = None) -> Path:
+        """Generate unique filename handling duplicates with resolution and version suffixes"""
+        # Start with base name
+        if resolution:
+            candidate_name = f"{base_name}.{resolution}{extension}"
+        else:
+            candidate_name = f"{base_name}{extension}"
+        
+        candidate_path = dest_folder / candidate_name
+        
+        # If file doesn't exist, we're done
+        if not candidate_path.exists():
+            return candidate_path
+        
+        # File exists - check if it has the same resolution
+        existing_name = candidate_path.stem
+        existing_has_resolution = any(res in existing_name for _, res in self.parser.RESOLUTION_PATTERNS)
+        
+        # If we have a resolution and existing file doesn't, rename existing file
+        if resolution and not existing_has_resolution:
+            # Try to detect resolution of existing file (might be in original filename)
+            # For now, assume it's unknown quality, add version suffix to new file
+            pass
+        
+        # Same resolution or both without resolution - add version suffix
+        version = 2
+        while True:
+            if resolution:
+                versioned_name = f"{base_name}.{resolution}.v{version}{extension}"
+            else:
+                versioned_name = f"{base_name}.v{version}{extension}"
+            
+            versioned_path = dest_folder / versioned_name
+            if not versioned_path.exists():
+                return versioned_path
+            version += 1
+    
+    def copy_subtitles(self, source_folder: Path, dest_folder: Path, video_name_base: str, resolution: Optional[str] = None):
         """Find and copy all subtitle files to destination with proper naming"""
         subtitle_files = self.find_subtitle_files(source_folder)
         
@@ -210,8 +262,18 @@ class MediaSorter:
             elif re.search(r'\.(sdh|cc|hi)', sub_stem, re.IGNORECASE):
                 lang_suffix += ".sdh"
             
-            new_name = f"{video_name_base}{lang_suffix}{sub_ext}"
+            # Build subtitle name with resolution if present
+            if resolution:
+                new_name = f"{video_name_base}.{resolution}{lang_suffix}{sub_ext}"
+            else:
+                new_name = f"{video_name_base}{lang_suffix}{sub_ext}"
+            
             dest_path = dest_folder / new_name
+            
+            # Handle duplicates for subtitles too
+            if dest_path.exists():
+                base = f"{video_name_base}{lang_suffix}"
+                dest_path = self.get_unique_filename(dest_folder, base, sub_ext, resolution)
             
             print(f"Moving subtitle: {sub_file.name} -> {dest_path.name}")
             shutil.copy2(str(sub_file), str(dest_path))
@@ -232,15 +294,21 @@ class MediaSorter:
         
         for video_file in video_files:
             ext = video_file.suffix
-            new_name = f"{show_name} - S{season:02d}E{episode:02d}{ext}"
-            dest_path = season_folder / new_name
+            
+            # Detect resolution from filename
+            resolution = self.parser.detect_resolution(video_file.name)
+            
+            # Base name for the episode
+            base_name = f"{show_name} - S{season:02d}E{episode:02d}"
+            
+            # Get unique filename (handles duplicates)
+            dest_path = self.get_unique_filename(season_folder, base_name, ext, resolution)
             
             print(f"Moving TV: {video_file} -> {dest_path}")
             shutil.move(str(video_file), str(dest_path))
             
             # Copy subtitles for this video
-            video_name_base = f"{show_name} - S{season:02d}E{episode:02d}"
-            self.copy_subtitles(source_folder, season_folder, video_name_base)
+            self.copy_subtitles(source_folder, season_folder, base_name, resolution)
         
         # Clean up empty source folder
         self._cleanup_folder(source_folder)
@@ -259,14 +327,18 @@ class MediaSorter:
         
         for video_file in video_files:
             ext = video_file.suffix
-            new_name = f"{movie_name}{ext}"
-            dest_path = movie_folder / new_name
+            
+            # Detect resolution from filename
+            resolution = self.parser.detect_resolution(video_file.name)
+            
+            # Get unique filename (handles duplicates)
+            dest_path = self.get_unique_filename(movie_folder, movie_name, ext, resolution)
             
             print(f"Moving Movie: {video_file} -> {dest_path}")
             shutil.move(str(video_file), str(dest_path))
             
             # Copy subtitles for this movie
-            self.copy_subtitles(source_folder, movie_folder, movie_name)
+            self.copy_subtitles(source_folder, movie_folder, movie_name, resolution)
         
         # Clean up empty source folder
         self._cleanup_folder(source_folder)

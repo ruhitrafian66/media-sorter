@@ -116,6 +116,20 @@ python3 media_sorter.py
 
 **Subtitles**: srt, sub, ass, ssa, vtt, idx, sup
 
+## Duplicate Handling
+
+The sorter intelligently handles duplicate files:
+
+**Different Resolutions** - Keeps both with resolution suffix:
+- `Movie (2010).2160p.mkv` and `Movie (2010).1080p.mkv`
+- `Show - S01E01.1080p.mkv` and `Show - S01E01.720p.mkv`
+
+**Same Resolution** - Adds version suffix:
+- `Movie (2010).1080p.mkv` and `Movie (2010).1080p.v2.mkv`
+- `Show - S01E01.mkv` and `Show - S01E01.v2.mkv`
+
+Supported resolutions: 2160p (4K/UHD), 1080p (FHD), 720p (HD), 480p (SD)
+
 ## Subtitle Handling
 
 The sorter automatically finds subtitle files in any subfolder and moves them alongside the video file with proper naming:
