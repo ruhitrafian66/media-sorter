@@ -22,6 +22,9 @@ POLL_INTERVAL = int(os.getenv('POLL_INTERVAL', '60'))  # seconds
 # Video file extensions
 VIDEO_EXTENSIONS = {'.mkv', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.m4v', '.mpg', '.mpeg'}
 
+# Subtitle file extensions
+SUBTITLE_EXTENSIONS = {'.srt', '.sub', '.ass', '.ssa', '.vtt', '.idx', '.sup'}
+
 
 class MediaParser:
     """Parse media file/folder names and identify TV shows vs Movies"""
@@ -147,6 +150,72 @@ class MediaSorter:
                     video_files.append(Path(root) / file)
         return video_files
     
+    def find_subtitle_files(self, folder: Path) -> list:
+        """Find all subtitle files in folder and subfolders"""
+        subtitle_files = []
+        for root, dirs, files in os.walk(folder):
+            for file in files:
+                if Path(file).suffix.lower() in SUBTITLE_EXTENSIONS:
+                    subtitle_files.append(Path(root) / file)
+        return subtitle_files
+    
+    def match_subtitle_to_video(self, subtitle_path: Path, video_files: list) -> Optional[Path]:
+        """Try to match a subtitle file to a video file"""
+        sub_name = subtitle_path.stem.lower()
+        
+        # Remove common subtitle tags
+        sub_name_clean = re.sub(r'\.(eng|english|forced|sdh|cc|hi)$', '', sub_name, flags=re.IGNORECASE)
+        
+        # Try exact match first
+        for video in video_files:
+            video_name = video.stem.lower()
+            if sub_name_clean == video_name or sub_name == video_name:
+                return video
+        
+        # Try partial match (subtitle name contains video name or vice versa)
+        for video in video_files:
+            video_name = video.stem.lower()
+            if sub_name_clean in video_name or video_name in sub_name_clean:
+                return video
+        
+        return None
+    
+    def copy_subtitles(self, source_folder: Path, dest_folder: Path, video_name_base: str):
+        """Find and copy all subtitle files to destination with proper naming"""
+        subtitle_files = self.find_subtitle_files(source_folder)
+        
+        if not subtitle_files:
+            return
+        
+        print(f"Found {len(subtitle_files)} subtitle file(s)")
+        
+        for sub_file in subtitle_files:
+            sub_ext = sub_file.suffix
+            sub_stem = sub_file.stem.lower()
+            
+            # Detect language/type from filename
+            lang_suffix = ""
+            if re.search(r'\.(eng|english)', sub_stem, re.IGNORECASE):
+                lang_suffix = ".en"
+            elif re.search(r'\.(spa|spanish)', sub_stem, re.IGNORECASE):
+                lang_suffix = ".es"
+            elif re.search(r'\.(fre|french)', sub_stem, re.IGNORECASE):
+                lang_suffix = ".fr"
+            elif re.search(r'\.(ger|german)', sub_stem, re.IGNORECASE):
+                lang_suffix = ".de"
+            
+            # Detect forced/SDH/CC
+            if re.search(r'\.(forced)', sub_stem, re.IGNORECASE):
+                lang_suffix += ".forced"
+            elif re.search(r'\.(sdh|cc|hi)', sub_stem, re.IGNORECASE):
+                lang_suffix += ".sdh"
+            
+            new_name = f"{video_name_base}{lang_suffix}{sub_ext}"
+            dest_path = dest_folder / new_name
+            
+            print(f"Moving subtitle: {sub_file.name} -> {dest_path.name}")
+            shutil.copy2(str(sub_file), str(dest_path))
+    
     def sort_tv_show(self, source_folder: Path, tv_info: Dict):
         """Sort TV show into proper folder structure"""
         show_name = self.parser.get_proper_name(tv_info['show_name'], 'tv')
@@ -168,6 +237,10 @@ class MediaSorter:
             
             print(f"Moving TV: {video_file} -> {dest_path}")
             shutil.move(str(video_file), str(dest_path))
+            
+            # Copy subtitles for this video
+            video_name_base = f"{show_name} - S{season:02d}E{episode:02d}"
+            self.copy_subtitles(source_folder, season_folder, video_name_base)
         
         # Clean up empty source folder
         self._cleanup_folder(source_folder)
@@ -191,6 +264,9 @@ class MediaSorter:
             
             print(f"Moving Movie: {video_file} -> {dest_path}")
             shutil.move(str(video_file), str(dest_path))
+            
+            # Copy subtitles for this movie
+            self.copy_subtitles(source_folder, movie_folder, movie_name)
         
         # Clean up empty source folder
         self._cleanup_folder(source_folder)

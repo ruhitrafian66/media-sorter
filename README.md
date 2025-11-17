@@ -10,6 +10,8 @@ Automatically sort media files into TV and Movies folders with proper naming con
 - **TMDB integration**: Optional API integration for accurate titles and metadata
 - **Proper naming**: Renames files according to standard conventions
 - **Clean organization**: Creates proper folder structures
+- **Subtitle support**: Automatically finds and sorts subtitle files from any subfolder
+- **Language detection**: Identifies subtitle language and type (forced, SDH, CC)
 
 ## Quick Start
 
@@ -108,6 +110,22 @@ sudo systemctl restart media-sorter
 python3 media_sorter.py
 ```
 
-## Supported Video Formats
+## Supported Formats
 
-mkv, mp4, avi, mov, wmv, flv, m4v, mpg, mpeg
+**Video**: mkv, mp4, avi, mov, wmv, flv, m4v, mpg, mpeg
+
+**Subtitles**: srt, sub, ass, ssa, vtt, idx, sup
+
+## Subtitle Handling
+
+The sorter automatically finds subtitle files in any subfolder and moves them alongside the video file with proper naming:
+
+**Examples:**
+- `movie.srt` → `Movie Name (2010).srt`
+- `movie.english.srt` → `Movie Name (2010).en.srt`
+- `movie.forced.srt` → `Movie Name (2010).en.forced.srt`
+- `movie.sdh.srt` → `Movie Name (2010).en.sdh.srt`
+
+Supported languages: English (en), Spanish (es), French (fr), German (de)
+
+The sorter will search through all subfolders (like `Subs/`, `Subtitles/`, etc.) to find subtitle files.
