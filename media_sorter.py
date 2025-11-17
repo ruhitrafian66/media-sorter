@@ -155,6 +155,9 @@ class MediaSorter:
         self.parser = MediaParser(tmdb_api_key)
         self.log_file = log_file
         
+        # Set umask to allow group write (002 = rwxrwxr-x)
+        os.umask(0o002)
+        
         # Create folders if they don't exist
         self.watch_folder.mkdir(parents=True, exist_ok=True)
         self.tv_folder.mkdir(parents=True, exist_ok=True)
@@ -348,6 +351,8 @@ class MediaSorter:
             print(f"Moving TV: {video_file.name} -> {dest_path.name}")
             self.log_move(str(video_file), str(dest_path), "TV")
             shutil.move(str(video_file), str(dest_path))
+            # Ensure group write permissions
+            dest_path.chmod(0o664)
             
             # Copy subtitles for this episode
             self.copy_subtitles(source_folder, season_folder, base_name, resolution)
@@ -379,6 +384,8 @@ class MediaSorter:
             print(f"Moving Movie: {video_file} -> {dest_path}")
             self.log_move(str(video_file), str(dest_path), "MOVIE")
             shutil.move(str(video_file), str(dest_path))
+            # Ensure group write permissions
+            dest_path.chmod(0o664)
             
             # Copy subtitles for this movie
             self.copy_subtitles(source_folder, movie_folder, movie_name, resolution)
