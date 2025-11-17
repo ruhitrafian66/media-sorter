@@ -11,6 +11,7 @@ Environment="MEDIA_TV_FOLDER=/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875
 Environment="MEDIA_MOVIES_FOLDER=/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Server/Movies"
 Environment="TMDB_API_KEY="
 Environment="POLL_INTERVAL=60"
+Environment="LOG_FILE=/var/log/media-sorter.log"
 ExecStart=/usr/bin/python3 /opt/media-sorter/media_sorter.py
 Restart=always
 RestartSec=10

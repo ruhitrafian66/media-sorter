@@ -68,6 +68,7 @@ Set these environment variables:
 - `MEDIA_MOVIES_FOLDER`: Destination for movies (default: `/media/Movies`)
 - `TMDB_API_KEY`: Optional TMDB API key for accurate naming
 - `POLL_INTERVAL`: Scan interval in seconds (default: `60`)
+- `LOG_FILE`: Path to movement log file (default: `/var/log/media-sorter.log`)
 
 ## How It Works
 
@@ -94,6 +95,30 @@ Get a free API key:
 3. Request an API key (choose "Developer")
 4. Add to your environment or service file
 
+## Movement Log
+
+All file movements are logged to `/var/log/media-sorter.log` with timestamps:
+
+```bash
+# View recent movements
+sudo tail -f /var/log/media-sorter.log
+
+# Search for specific show/movie
+sudo grep "Breaking Bad" /var/log/media-sorter.log
+
+# View all TV show movements
+sudo grep "TV |" /var/log/media-sorter.log
+
+# View all movie movements
+sudo grep "MOVIE |" /var/log/media-sorter.log
+```
+
+**Log format:**
+```
+2025-11-17 18:30:45 - TV | /path/to/source.mkv -> /path/to/destination.mkv
+2025-11-17 18:31:12 - MOVIE | /path/to/source.mp4 -> /path/to/destination.mp4
+```
+
 ## Troubleshooting
 
 ```bash
@@ -102,6 +127,9 @@ sudo systemctl status media-sorter
 
 # View recent logs
 sudo journalctl -u media-sorter -n 50
+
+# View movement log
+sudo tail -f /var/log/media-sorter.log
 
 # Restart service
 sudo systemctl restart media-sorter

@@ -6,6 +6,8 @@ import os
 import re
 import shutil
 import time
+import logging
+from datetime import datetime
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -18,6 +20,7 @@ TV_FOLDER = os.getenv('MEDIA_TV_FOLDER', '/srv/dev-disk-by-uuid-2f521503-8710-48
 MOVIES_FOLDER = os.getenv('MEDIA_MOVIES_FOLDER', '/srv/dev-disk-by-uuid-2f521503-8710-48ab-8e68-17875edf1865/Server/Movies')
 TMDB_API_KEY = os.getenv('TMDB_API_KEY', '')  # Get free key from themoviedb.org
 POLL_INTERVAL = int(os.getenv('POLL_INTERVAL', '60'))  # seconds
+LOG_FILE = os.getenv('LOG_FILE', '/var/log/media-sorter.log')
 
 # Video file extensions
 VIDEO_EXTENSIONS = {'.mkv', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.m4v', '.mpg', '.mpeg'}
@@ -145,16 +148,47 @@ class MediaParser:
 class MediaSorter:
     """Sort media files into TV and Movies folders"""
     
-    def __init__(self, watch_folder: str, tv_folder: str, movies_folder: str, tmdb_api_key: str = ''):
+    def __init__(self, watch_folder: str, tv_folder: str, movies_folder: str, tmdb_api_key: str = '', log_file: str = ''):
         self.watch_folder = Path(watch_folder)
         self.tv_folder = Path(tv_folder)
         self.movies_folder = Path(movies_folder)
         self.parser = MediaParser(tmdb_api_key)
+        self.log_file = log_file
         
         # Create folders if they don't exist
         self.watch_folder.mkdir(parents=True, exist_ok=True)
         self.tv_folder.mkdir(parents=True, exist_ok=True)
         self.movies_folder.mkdir(parents=True, exist_ok=True)
+        
+        # Setup file logging
+        if self.log_file:
+            self._setup_file_logger()
+    
+    def _setup_file_logger(self):
+        """Setup file logger for movement tracking"""
+        try:
+            # Create log directory if it doesn't exist
+            log_path = Path(self.log_file)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Setup file handler
+            file_handler = logging.FileHandler(self.log_file)
+            file_handler.setLevel(logging.INFO)
+            formatter = logging.Formatter('%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+            file_handler.setFormatter(formatter)
+            
+            # Get logger
+            self.logger = logging.getLogger('media_sorter')
+            self.logger.setLevel(logging.INFO)
+            self.logger.addHandler(file_handler)
+        except Exception as e:
+            print(f"Warning: Could not setup file logging: {e}")
+            self.logger = None
+    
+    def log_move(self, source: str, destination: str, media_type: str):
+        """Log a file movement"""
+        if self.logger:
+            self.logger.info(f"{media_type} | {source} -> {destination}")
     
     def find_video_files(self, folder: Path) -> list:
         """Find all video files in folder"""
@@ -312,6 +346,7 @@ class MediaSorter:
             dest_path = self.get_unique_filename(season_folder, base_name, ext, resolution)
             
             print(f"Moving TV: {video_file.name} -> {dest_path.name}")
+            self.log_move(str(video_file), str(dest_path), "TV")
             shutil.move(str(video_file), str(dest_path))
             
             # Copy subtitles for this episode
@@ -342,6 +377,7 @@ class MediaSorter:
             dest_path = self.get_unique_filename(movie_folder, movie_name, ext, resolution)
             
             print(f"Moving Movie: {video_file} -> {dest_path}")
+            self.log_move(str(video_file), str(dest_path), "MOVIE")
             shutil.move(str(video_file), str(dest_path))
             
             # Copy subtitles for this movie
@@ -439,9 +475,10 @@ def main():
     print(f"TV Folder: {TV_FOLDER}")
     print(f"Movies Folder: {MOVIES_FOLDER}")
     print(f"TMDB API: {'Enabled' if TMDB_API_KEY else 'Disabled (using basic naming)'}")
+    print(f"Log File: {LOG_FILE}")
     print("=" * 60)
     
-    sorter = MediaSorter(WATCH_FOLDER, TV_FOLDER, MOVIES_FOLDER, TMDB_API_KEY)
+    sorter = MediaSorter(WATCH_FOLDER, TV_FOLDER, MOVIES_FOLDER, TMDB_API_KEY, LOG_FILE)
     
     # Initial scan
     sorter.scan_watch_folder()
