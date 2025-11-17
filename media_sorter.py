@@ -278,21 +278,28 @@ class MediaSorter:
             print(f"Moving subtitle: {sub_file.name} -> {dest_path.name}")
             shutil.copy2(str(sub_file), str(dest_path))
     
-    def sort_tv_show(self, source_folder: Path, tv_info: Dict):
-        """Sort TV show into proper folder structure"""
-        show_name = self.parser.get_proper_name(tv_info['show_name'], 'tv')
-        season = tv_info['season']
-        episode = tv_info['episode']
-        
-        # Create: TV/Show Name/Season 01/
-        show_folder = self.tv_folder / show_name
-        season_folder = show_folder / f"Season {season:02d}"
-        season_folder.mkdir(parents=True, exist_ok=True)
-        
-        # Find video files
+    def sort_tv_episodes(self, source_folder: Path):
+        """Sort TV episodes - handles multiple episodes in one folder"""
         video_files = self.find_video_files(source_folder)
         
         for video_file in video_files:
+            # Check each video file for TV pattern
+            is_tv, tv_info = self.parser.is_tv_show(video_file.name)
+            
+            if not is_tv:
+                # Skip files that don't match TV pattern
+                print(f"Skipping non-TV file: {video_file.name}")
+                continue
+            
+            show_name = self.parser.get_proper_name(tv_info['show_name'], 'tv')
+            season = tv_info['season']
+            episode = tv_info['episode']
+            
+            # Create: TV/Show Name/Season 01/
+            show_folder = self.tv_folder / show_name
+            season_folder = show_folder / f"Season {season:02d}"
+            season_folder.mkdir(parents=True, exist_ok=True)
+            
             ext = video_file.suffix
             
             # Detect resolution from filename
@@ -304,10 +311,10 @@ class MediaSorter:
             # Get unique filename (handles duplicates)
             dest_path = self.get_unique_filename(season_folder, base_name, ext, resolution)
             
-            print(f"Moving TV: {video_file} -> {dest_path}")
+            print(f"Moving TV: {video_file.name} -> {dest_path.name}")
             shutil.move(str(video_file), str(dest_path))
             
-            # Copy subtitles for this video
+            # Copy subtitles for this episode
             self.copy_subtitles(source_folder, season_folder, base_name, resolution)
         
         # Clean up empty source folder
@@ -368,12 +375,21 @@ class MediaSorter:
         
         print(f"\nProcessing: {folder.name}")
         
-        # Check if it's a TV show
+        # Check if folder name indicates TV show
         is_tv, tv_info = self.parser.is_tv_show(folder.name)
+        
+        # If not detected from folder, check video file names
+        if not is_tv:
+            video_files = self.find_video_files(folder)
+            if video_files:
+                # Check first video file for TV pattern
+                first_video = video_files[0]
+                is_tv, tv_info = self.parser.is_tv_show(first_video.name)
         
         if is_tv:
             print(f"Detected TV Show: {tv_info['show_name']} S{tv_info['season']:02d}E{tv_info['episode']:02d}")
-            self.sort_tv_show(folder, tv_info)
+            # Process each episode file individually
+            self.sort_tv_episodes(folder)
         else:
             print(f"Detected Movie: {folder.name}")
             self.sort_movie(folder)
